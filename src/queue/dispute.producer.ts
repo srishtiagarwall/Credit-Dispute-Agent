@@ -21,6 +21,10 @@ export class DisputeProducer implements OnModuleInit, OnModuleDestroy {
     this.logger.log('DisputeProducer: queue connection closed');
   }
 
+  getQueue(): Queue {
+    return this.queue;
+  }
+
   async enqueueDisputeJob(creditReport: CreditReport): Promise<string> {
     const job = await this.queue.add(
       DISPUTE_JOB_NAME,

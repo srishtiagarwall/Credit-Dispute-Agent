@@ -3,3 +3,15 @@ export interface SubmitDisputeResponse {
   status: 'QUEUED';
   message: string;
 }
+
+export interface JobResultResponse {
+  jobId: string;
+  jobStatus: 'active' | 'completed' | 'failed' | 'waiting' | 'unknown';
+  result: {
+    status: string;
+    anomalies: unknown[];
+    disputes: unknown[];
+    letters: unknown[];
+    errors: string[];
+  } | null;
+}
