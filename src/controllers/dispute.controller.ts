@@ -7,17 +7,15 @@ import {
   HttpCode,
   HttpStatus,
   Logger,
-  InternalServerErrorException,
   NotFoundException,
   BadRequestException,
   Res,
 } from '@nestjs/common';
 import { Response } from 'express';
-import * as fs from 'fs';
-import * as path from 'path';
 import { DisputeProducer } from '../queue/dispute.producer';
 import { CreditReport, DisputeGraphState, DisputeLetter } from '../types/graph.state';
 import { SubmitDisputeResponse, JobResultResponse } from '../dto/submit-dispute.dto';
+import mockCreditReport from '../../mock/credit-report.json';
 
 @Controller()
 export class DisputeController {
@@ -27,12 +25,8 @@ export class DisputeController {
 
   @Get()
   landingPage(@Res() res: Response): void {
-    const mockReport = fs.readFileSync(
-      path.resolve(process.cwd(), 'mock', 'credit-report.json'),
-      'utf-8',
-    );
     res.setHeader('Content-Type', 'text/html');
-    res.send(buildLandingPage(mockReport));
+    res.send(buildLandingPage(JSON.stringify(mockCreditReport, null, 2)));
   }
 
   @Post('dispute/submit')
@@ -46,15 +40,8 @@ export class DisputeController {
       creditReport = body as CreditReport;
       this.logger.log('DisputeController: using custom credit report from request body');
     } else {
-      try {
-        const reportPath = path.resolve(process.cwd(), 'mock', 'credit-report.json');
-        const raw = fs.readFileSync(reportPath, 'utf-8');
-        creditReport = JSON.parse(raw) as CreditReport;
-        this.logger.log('DisputeController: using mock credit report');
-      } catch (err) {
-        this.logger.error(`DisputeController: failed to load mock report — ${(err as Error).message}`);
-        throw new InternalServerErrorException('Could not load credit report');
-      }
+      creditReport = mockCreditReport as CreditReport;
+      this.logger.log('DisputeController: using mock credit report');
     }
 
     if (!creditReport.reportId || !creditReport.accounts || !creditReport.borrower) {
