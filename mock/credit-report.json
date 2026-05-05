@@ -1,0 +1,109 @@
+{
+  "reportId": "EXP-2024-110293847",
+  "bureau": "Experian",
+  "reportDate": "2024-11-01",
+  "creditScore": 634,
+  "borrower": {
+    "name": "Rahul Mehta",
+    "pan": "ABXPM****K",
+    "dateOfBirth": "1988-04-15",
+    "address": "42, Shivaji Nagar, Pune, Maharashtra - 411005"
+  },
+  "accounts": [
+    {
+      "accountId": "HDFC-CC-00183746",
+      "lenderName": "HDFC Bank",
+      "accountType": "CREDIT_CARD",
+      "accountStatus": "ACTIVE",
+      "balance": 87500,
+      "creditLimit": 100000,
+      "openedDate": "2019-06-12",
+      "paymentHistory": [
+        { "month": "2024-10", "status": "ON_TIME" },
+        { "month": "2024-09", "status": "ON_TIME" },
+        { "month": "2024-08", "status": "LATE_30" },
+        { "month": "2024-07", "status": "LATE_60" },
+        { "month": "2024-06", "status": "ON_TIME" },
+        { "month": "2024-05", "status": "ON_TIME" }
+      ]
+    },
+    {
+      "accountId": "ICICI-PL-00294710",
+      "lenderName": "ICICI Bank",
+      "accountType": "PERSONAL_LOAN",
+      "accountStatus": "CLOSED",
+      "balance": 0,
+      "creditLimit": 0,
+      "openedDate": "2020-02-20",
+      "paymentHistory": [
+        { "month": "2024-10", "status": "ON_TIME" },
+        { "month": "2024-09", "status": "ON_TIME" },
+        { "month": "2024-08", "status": "ON_TIME" }
+      ]
+    },
+    {
+      "accountId": "AXIS-CC-00471823",
+      "lenderName": "Axis Bank",
+      "accountType": "CREDIT_CARD",
+      "accountStatus": "ACTIVE",
+      "balance": 58000,
+      "creditLimit": 60000,
+      "openedDate": "2021-08-05",
+      "paymentHistory": [
+        { "month": "2024-10", "status": "ON_TIME" },
+        { "month": "2024-09", "status": "LATE_30" },
+        { "month": "2024-08", "status": "ON_TIME" },
+        { "month": "2024-07", "status": "ON_TIME" }
+      ]
+    },
+    {
+      "accountId": "SBI-HL-00938271",
+      "lenderName": "State Bank of India",
+      "accountType": "HOME_LOAN",
+      "accountStatus": "WRITTEN_OFF",
+      "balance": 2500000,
+      "creditLimit": 3000000,
+      "openedDate": "2017-11-30",
+      "paymentHistory": [
+        { "month": "2024-10", "status": "ON_TIME" },
+        { "month": "2024-09", "status": "ON_TIME" },
+        { "month": "2024-08", "status": "ON_TIME" },
+        { "month": "2024-07", "status": "ON_TIME" },
+        { "month": "2024-06", "status": "ON_TIME" }
+      ]
+    },
+    {
+      "accountId": "HDFC-PL-00183746",
+      "lenderName": "HDFC Bank",
+      "accountType": "PERSONAL_LOAN",
+      "accountStatus": "ACTIVE",
+      "balance": 45000,
+      "creditLimit": 50000,
+      "openedDate": "2019-06-14",
+      "paymentHistory": [
+        { "month": "2024-10", "status": "ON_TIME" },
+        { "month": "2024-09", "status": "ON_TIME" }
+      ]
+    }
+  ],
+  "inquiries": [
+    {
+      "inquiryId": "INQ-2024-001",
+      "lenderName": "HDFC Bank",
+      "inquiryDate": "2024-10-15",
+      "purpose": "Credit Card Application"
+    },
+    {
+      "inquiryId": "INQ-2024-002",
+      "lenderName": "QuickLoans Pvt Ltd",
+      "inquiryDate": "2024-09-22",
+      "purpose": "Unknown"
+    },
+    {
+      "inquiryId": "INQ-2024-003",
+      "lenderName": "ZestMoney",
+      "inquiryDate": "2024-08-11",
+      "purpose": "Unknown"
+    }
+  ]
+}

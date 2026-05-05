@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(./node_modules/.bin/tsc *)",
+      "Bash(./node_modules/.bin/nest build *)",
+      "Bash(curl -X POST http://localhost:3000/dispute/submit -H \"Content-Type: application/json\" -d @mock/credit-report.json)",
+      "Bash(curl -s -X POST http://localhost:3000/dispute/submit -H \"Content-Type: application/json\" -d @mock/credit-report.json)",
+      "WebSearch"
+    ]
+  }
+}
