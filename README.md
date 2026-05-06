@@ -58,7 +58,7 @@ POST /dispute/submit
 |---|---|
 | **NestJS** | Dependency injection + lifecycle hooks (`OnModuleInit`/`OnModuleDestroy`) make wiring producers/workers clean without global state. |
 | **LangGraph** | Explicit typed state machine with conditional routing — far more controllable than a plain LangChain chain when agents need to short-circuit or error-collect gracefully. |
-| **Gemini (gemini-1.5-flash)** | High throughput, low latency for structured JSON extraction tasks; `systemInstruction` field provides clean role separation. |
+| **Gemini (gemini-2.5-pro)** | High throughput, low latency for structured JSON extraction tasks; `systemInstruction` field provides clean role separation. |
 | **BullMQ + Redis** | Durable job queue with built-in retry/backoff, concurrency control, and visibility into job state — decouples the HTTP request lifecycle from multi-second LLM processing. |
 | **ioredis** | BullMQ's recommended Redis client; supports `maxRetriesPerRequest: null` required by BullMQ workers. |
 
