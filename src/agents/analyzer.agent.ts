@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { Anomaly, CreditReport } from '../types/graph.state';
-import { getGeminiModel } from './gemini.client';
+import { getGeminiModel, generateWithRetry } from './gemini.client';
 
 const logger = new Logger('AnalyzerAgent');
 
@@ -34,7 +34,7 @@ export async function runAnalyzerAgent(
 
   logger.log(`[${new Date().toISOString()}] AnalyzerAgent: sending request to Gemini`);
 
-  const result = await model.generateContent(buildUserPrompt(report));
+  const result = await generateWithRetry(model, buildUserPrompt(report));
   const rawText = result.response.text().trim();
 
   logger.log(`[${new Date().toISOString()}] AnalyzerAgent: received response, parsing anomalies`);

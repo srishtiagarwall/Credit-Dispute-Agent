@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { Dispute, DisputeLetter, Borrower } from '../types/graph.state';
-import { getGeminiModel } from './gemini.client';
+import { getGeminiModel, generateWithRetry } from './gemini.client';
 
 const logger = new Logger('LetterDrafterAgent');
 
@@ -56,7 +56,7 @@ export async function runLetterDrafterAgent(
 
   logger.log(`[${new Date().toISOString()}] LetterDrafterAgent: drafting letters for ${actionableDisputes.length} disputes`);
 
-  const result = await model.generateContent(buildUserPrompt(actionableDisputes, borrower));
+  const result = await generateWithRetry(model, buildUserPrompt(actionableDisputes, borrower));
   const rawText = result.response.text().trim();
 
   logger.log(`[${new Date().toISOString()}] LetterDrafterAgent: received response, parsing letters`);

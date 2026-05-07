@@ -122,14 +122,14 @@ export class DisputeController {
 
     const state = await job.getState();
     const result = job.returnvalue as DisputeGraphState | null;
+    const processedOn = job.processedOn || job.timestamp || Date.now();
 
     res.setHeader('Content-Type', 'text/html');
-    res.send(buildResultPage(jobId, state, result));
+    res.send(buildResultPage(jobId, state, result, processedOn));
   }
 }
 
-// ─── HTML builders ───────────────────────────────────────────────────────────
-
+// ─── HTML builders ───────────────────────────────────────────────────────────\n
 function buildLandingPage(mockReportJson: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -137,87 +137,208 @@ function buildLandingPage(mockReportJson: string): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Credit Dispute Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --radius: 8px;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; }
-    .topbar { background: #0f172a; color: white; padding: 18px 40px; display: flex; align-items: center; justify-content: space-between; }
-    .topbar h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
-    .topbar .tag { font-size: 11px; background: #6366f1; color: white; padding: 3px 10px; border-radius: 99px; font-weight: 600; }
-    .hero { text-align: center; padding: 64px 24px 48px; }
-    .hero h2 { font-size: 36px; font-weight: 800; color: #0f172a; letter-spacing: -1px; line-height: 1.15; }
-    .hero h2 span { color: #6366f1; }
-    .hero p { margin-top: 16px; font-size: 16px; color: #64748b; max-width: 520px; margin-left: auto; margin-right: auto; line-height: 1.6; }
-    .pipeline { display: flex; align-items: center; justify-content: center; gap: 0; margin: 40px auto; max-width: 760px; flex-wrap: wrap; }
-    .step { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; text-align: center; min-width: 130px; }
-    .step .icon { font-size: 22px; margin-bottom: 6px; }
-    .step .name { font-size: 12px; font-weight: 700; color: #0f172a; }
-    .step .desc { font-size: 11px; color: #94a3b8; margin-top: 2px; }
-    .arrow { color: #cbd5e1; font-size: 20px; padding: 0 8px; }
-    .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 900px; margin: 0 auto; padding: 0 24px 64px; }
-    .card { background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 28px; }
-    .card h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: #0f172a; }
-    .card p { font-size: 13px; color: #64748b; margin-bottom: 20px; line-height: 1.5; }
-    .btn { display: inline-block; padding: 11px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; width: 100%; text-align: center; }
-    .btn-primary { background: #6366f1; color: white; }
-    .btn-primary:hover { background: #4f46e5; }
-    .btn-outline { background: white; color: #6366f1; border: 1.5px solid #6366f1; }
-    .btn-outline:hover { background: #f5f3ff; }
-    textarea { width: 100%; height: 200px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; resize: vertical; color: #374151; background: #f8fafc; margin-bottom: 12px; outline: none; }
-    textarea:focus { border-color: #6366f1; background: white; }
-    .error-msg { color: #dc2626; font-size: 12px; margin-bottom: 10px; display: none; }
-    .spinner-inline { display: none; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto; }
+    body { 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+      background: var(--bg); 
+      color: var(--text-main); 
+      line-height: 1.5; 
+      -webkit-font-smoothing: antialiased; 
+    }
+    .topbar { 
+      background: var(--surface); 
+      border-bottom: 1px solid var(--border); 
+      padding: 16px 40px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+      box-shadow: var(--shadow-sm);
+    }
+    .topbar h1 { 
+      font-size: 18px; 
+      font-weight: 600; 
+      letter-spacing: -0.01em; 
+      color: var(--text-main);
+    }
+    .hero { 
+      text-align: center; 
+      padding: 80px 24px 64px; 
+      max-width: 800px; 
+      margin: 0 auto; 
+    }
+    .hero h2 { 
+      font-size: 36px; 
+      font-weight: 700; 
+      color: var(--text-main); 
+      letter-spacing: -0.02em; 
+      line-height: 1.2; 
+      margin-bottom: 16px; 
+    }
+    .hero p { 
+      font-size: 16px; 
+      color: var(--text-muted); 
+      max-width: 600px; 
+      margin: 0 auto; 
+    }
+    
+
+    
+    .cards { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+      gap: 24px; 
+      max-width: 1000px; 
+      margin: 0 auto; 
+      padding: 0 24px 80px; 
+    }
+    .card { 
+      background: var(--surface); 
+      border: 1px solid var(--border); 
+      border-radius: var(--radius); 
+      padding: 32px; 
+      box-shadow: var(--shadow-sm); 
+      display: flex; 
+      flex-direction: column; 
+    }
+    .card h3 { 
+      font-size: 18px; 
+      font-weight: 600; 
+      margin-bottom: 8px; 
+      color: var(--text-main); 
+    }
+    .card p { 
+      font-size: 14px; 
+      color: var(--text-muted); 
+      margin-bottom: 24px; 
+      flex-grow: 1; 
+    }
+    
+    .btn { 
+      display: inline-flex; 
+      align-items: center; 
+      justify-content: center; 
+      padding: 10px 20px; 
+      border-radius: 6px; 
+      font-size: 14px; 
+      font-weight: 500; 
+      cursor: pointer; 
+      border: 1px solid transparent; 
+      width: 100%; 
+      transition: all 0.2s ease; 
+      font-family: inherit;
+    }
+    .btn-primary { 
+      background: var(--primary); 
+      color: white; 
+    }
+    .btn-primary:hover { 
+      background: var(--primary-hover); 
+    }
+    .btn-outline { 
+      background: var(--surface); 
+      color: var(--text-main); 
+      border-color: var(--border); 
+    }
+    .btn-outline:hover { 
+      background: #f1f5f9; 
+    }
+    
+    textarea { 
+      width: 100%; 
+      height: 160px; 
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; 
+      font-size: 13px; 
+      border: 1px solid var(--border); 
+      border-radius: 6px; 
+      padding: 12px; 
+      resize: vertical; 
+      color: var(--text-main); 
+      background: #f8fafc; 
+      margin-bottom: 16px; 
+      outline: none; 
+    }
+    textarea:focus { 
+      border-color: var(--primary); 
+      background: var(--surface); 
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1); 
+    }
+    .error-msg { 
+      color: #dc2626; 
+      font-size: 13px; 
+      margin-bottom: 12px; 
+      display: none; 
+      font-weight: 500; 
+    }
+    
+    .spinner-inline { 
+      display: none; 
+      width: 16px; 
+      height: 16px; 
+      border: 2px solid rgba(255,255,255,0.3); 
+      border-top-color: currentColor; 
+      border-radius: 50%; 
+      animation: spin 0.6s linear infinite; 
+      margin-left: 8px;
+    }
+    .btn-outline .spinner-inline {
+      border-color: rgba(15, 23, 42, 0.2);
+      border-top-color: var(--text-main);
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
   <div class="topbar">
-    <h1>Credit Dispute Agent</h1>
-    <span class="tag">Powered by Gemini + LangGraph</span>
+    <h1>Credit Dispute System</h1>
   </div>
 
   <div class="hero">
-    <h2>AI-powered <span>credit dispute</span><br>letters in seconds</h2>
-    <p>Upload a credit report. Four AI agents reconcile bureau conflicts, analyze anomalies, classify disputes, and draft formal letters — automatically.</p>
-
-    <div class="pipeline">
-      <div class="step"><div class="icon">🏦</div><div class="name">Experian + CIBIL</div><div class="desc">Two bureau inputs</div></div>
-      <div class="arrow">→</div>
-      <div class="step"><div class="icon">⚡</div><div class="name">Reconciler</div><div class="desc">Diffs bureaus</div></div>
-      <div class="arrow">→</div>
-      <div class="step"><div class="icon">🔍</div><div class="name">Analyzer</div><div class="desc">Flags anomalies</div></div>
-      <div class="arrow">→</div>
-      <div class="step"><div class="icon">⚖️</div><div class="name">Classifier</div><div class="desc">Scores disputes</div></div>
-      <div class="arrow">→</div>
-      <div class="step"><div class="icon">✉️</div><div class="name">Letter Drafter</div><div class="desc">Formal letters</div></div>
-    </div>
+    <h2>Automated Credit Dispute Resolution</h2>
+    <p>Upload a credit report to reconcile bureaus, analyze anomalies, classify disputes, and generate formal correspondence.</p>
   </div>
 
-  <div class="cards" style="grid-template-columns: 1fr 1fr 1fr;">
+
+
+  <div class="cards">
     <div class="card">
-      <h3>Single bureau (Experian)</h3>
-      <p>Use our pre-loaded Experian mock — late payments, high utilization, unknown inquiries.</p>
-      <button class="btn btn-primary" onclick="runMock()">
-        <span id="mock-label">Run Single Bureau →</span>
+      <h3>Single Bureau Analysis</h3>
+      <p>Test the system with a pre-loaded Experian report containing standard anomalies.</p>
+      <button class="btn btn-primary" onclick="runMock()" id="mock-btn">
+        <span id="mock-label">Run Analysis</span>
         <div class="spinner-inline" id="mock-spinner"></div>
       </button>
     </div>
 
     <div class="card">
-      <h3>Multi-bureau (Experian + CIBIL)</h3>
-      <p>Runs both mock reports through the Reconciler agent — detects cross-bureau conflicts before dispute classification.</p>
-      <button class="btn btn-primary" style="background:#7c3aed" onclick="runMultiBureau()">
-        <span id="multi-label">Run Multi-Bureau →</span>
+      <h3>Multi-Bureau Comparison</h3>
+      <p>Compare Experian and CIBIL reports simultaneously to detect discrepancies.</p>
+      <button class="btn btn-primary" onclick="runMultiBureau()" id="multi-btn">
+        <span id="multi-label">Compare Bureaus</span>
         <div class="spinner-inline" id="multi-spinner"></div>
       </button>
     </div>
 
     <div class="card">
-      <h3>Paste your own report</h3>
-      <p>Paste a credit report JSON. Must include <code>reportId</code>, <code>borrower</code>, and <code>accounts</code>.</p>
-      <textarea id="custom-json" placeholder="Paste credit report JSON here…">${escapeForHtml(mockReportJson)}</textarea>
-      <div class="error-msg" id="custom-error">Invalid JSON — please check your input.</div>
-      <button class="btn btn-outline" onclick="runCustom()">
-        <span id="custom-label">Analyze Report →</span>
+      <h3>Custom Data Payload</h3>
+      <p>Provide JSON data including <code>reportId</code>, <code>borrower</code>, and <code>accounts</code>.</p>
+      <textarea id="custom-json" spellcheck="false">${escapeForHtml(mockReportJson)}</textarea>
+      <div class="error-msg" id="custom-error">Invalid JSON format</div>
+      <button class="btn btn-outline" onclick="runCustom()" id="custom-btn">
+        <span id="custom-label">Process Custom Data</span>
         <div class="spinner-inline" id="custom-spinner"></div>
       </button>
     </div>
@@ -230,50 +351,35 @@ function buildLandingPage(mockReportJson: string): string {
         const res = await fetch('/dispute/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
         const data = await res.json();
         window.location.href = '/dispute/' + data.jobId + '/result/view';
-      } catch {
-        setLoading('mock', false);
-      }
+      } catch { setLoading('mock', false); }
     }
-
     async function runMultiBureau() {
       setLoading('multi', true);
       try {
         const res = await fetch('/dispute/submit-multi-bureau', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
         const data = await res.json();
         window.location.href = '/dispute/' + data.jobId + '/result/view';
-      } catch {
-        setLoading('multi', false);
-      }
+      } catch { setLoading('multi', false); }
     }
-
     async function runCustom() {
       const raw = document.getElementById('custom-json').value.trim();
       const errEl = document.getElementById('custom-error');
       errEl.style.display = 'none';
-
       let parsed;
-      try { parsed = JSON.parse(raw); } catch {
-        errEl.style.display = 'block';
-        return;
-      }
-
+      try { parsed = JSON.parse(raw); } catch { errEl.style.display = 'block'; return; }
       setLoading('custom', true);
       try {
-        const res = await fetch('/dispute/submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(parsed),
-        });
+        const res = await fetch('/dispute/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(parsed) });
         const data = await res.json();
         window.location.href = '/dispute/' + data.jobId + '/result/view';
-      } catch {
-        setLoading('custom', false);
-      }
+      } catch { setLoading('custom', false); }
     }
-
     function setLoading(which, on) {
       document.getElementById(which + '-label').style.display = on ? 'none' : 'inline';
-      document.getElementById(which + '-spinner').style.display = on ? 'block' : 'none';
+      document.getElementById(which + '-spinner').style.display = on ? 'inline-block' : 'none';
+      document.getElementById(which + '-btn').disabled = on;
+      document.getElementById(which + '-btn').style.opacity = on ? '0.7' : '1';
+      document.getElementById(which + '-btn').style.cursor = on ? 'not-allowed' : 'pointer';
     }
   </script>
 </body>
@@ -284,61 +390,112 @@ function buildResultPage(
   jobId: string,
   jobStatus: string,
   result: DisputeGraphState | null,
+  processedOn: number = Date.now()
 ): string {
-  const statusColor: Record<string, string> = {
-    COMPLETE: '#16a34a',
-    FAILED: '#dc2626',
-    ANALYZING: '#d97706',
-    IDENTIFYING: '#d97706',
-    DRAFTING: '#d97706',
-  };
-
-  const color = result ? (statusColor[result.status] ?? '#6b7280') : '#6b7280';
-
-  const lettersHtml = result?.letters?.length
-    ? result.letters
-        .map((l: DisputeLetter) => `
-          <div class="letter">
-            <div class="letter-header">
-              <div>
-                <span class="badge">${l.accountId}</span>
-                <strong>${l.lenderName}</strong>
-              </div>
-              <span class="letter-date">${new Date(l.generatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-            </div>
-            <div class="letter-subject">${escapeHtml(l.subject)}</div>
-            <pre class="letter-body">${escapeHtml(l.body)}</pre>
-          </div>`)
-        .join('')
-    : '<p class="empty">No letters generated.</p>';
+  const currentStatus = (result?.status ?? jobStatus).toUpperCase();
+  const isDone = currentStatus === 'COMPLETE' || currentStatus === 'COMPLETED' || currentStatus === 'FAILED';
+  
+  const steps = [
+    { key: 'RECONCILING', label: 'Reconciling Bureaus', icon: '1', desc: 'Comparing datasets' },
+    { key: 'ANALYZING', label: 'Analyzing Anomalies', icon: '2', desc: 'Scanning for inaccuracies' },
+    { key: 'IDENTIFYING', label: 'Classifying Disputes', icon: '3', desc: 'Categorizing severity' },
+    { key: 'DRAFTING', label: 'Drafting Letters', icon: '4', desc: 'Generating correspondence' },
+    { key: 'COMPLETE', label: 'Finalizing', icon: '5', desc: 'Ready for submission' }
+  ];
+  
+  let activeStepIndex = steps.findIndex(s => s.key === currentStatus);
+  if (activeStepIndex === -1) {
+    const elapsed = Date.now() - processedOn;
+    activeStepIndex = Math.min(3, Math.floor(elapsed / 3000));
+  }
+  if (isDone) activeStepIndex = 4;
 
   const conflictsHtml = result?.bureauConflicts?.length
-    ? `<div class="section-title" style="margin-top:8px">Bureau Conflicts Detected</div>` +
-      result.bureauConflicts
-        .map((c: BureauConflict) => {
-          const targetClass =
-            c.disputeTarget === 'EXPERIAN' ? 'target-experian'
-            : c.disputeTarget === 'CIBIL' ? 'target-cibil'
-            : 'target-both';
-          return `
-          <div class="conflict-card">
-            <div>
-              <div class="conflict-field">${escapeHtml(c.conflictField)} — <span style="color:#0f172a">${escapeHtml(c.accountId)}</span></div>
-              <div class="conflict-values">
-                Experian: <span>${escapeHtml(c.experianValue)}</span>
-                vs CIBIL: <span>${escapeHtml(c.cibilValue)}</span>
-              </div>
-              <div class="conflict-reasoning">${escapeHtml(c.reasoning)}</div>
-              <div class="ground-truth">Ground truth: ${c.groundTruth}</div>
+    ? `<div class="section-header">
+         <h2>Bureau Conflicts</h2>
+         <p>Discrepancies identified across reports</p>
+       </div>
+       <div class="conflicts-grid">` +
+      result.bureauConflicts.map((c: BureauConflict) => {
+        return `
+        <div class="conflict-item">
+          <div class="conflict-top">
+            <div class="conflict-field">${escapeHtml(c.conflictField)}</div>
+            <span class="badge badge-neutral">Target: ${escapeHtml(c.disputeTarget)}</span>
+          </div>
+          <div class="conflict-account">Acct: ${escapeHtml(c.accountId)}</div>
+          <div class="conflict-compare">
+            <div class="compare-side">
+              <div class="compare-label">Experian</div>
+              <div class="compare-val">${escapeHtml(c.experianValue || '—')}</div>
             </div>
-            <span class="target-badge ${targetClass}">Dispute ${c.disputeTarget}</span>
-          </div>`;
-        })
-        .join('')
+            <div class="compare-side">
+              <div class="compare-label">CIBIL</div>
+              <div class="compare-val">${escapeHtml(c.cibilValue || '—')}</div>
+            </div>
+          </div>
+          <div class="conflict-reasoning">
+            <strong>Analysis:</strong> ${escapeHtml(c.reasoning)}<br>
+            <span class="ground-truth">Expected: ${escapeHtml(c.groundTruth)}</span>
+          </div>
+        </div>`;
+      }).join('') + `</div>`
+    : '';
+
+  // Match letters to disputes
+  const disputesWithLetters = result?.disputes?.map((d: any) => {
+    const letter = result?.letters?.find((l: DisputeLetter) => 
+      (l.lenderName === d.lenderName || (l.accountId && d.accountId && l.accountId === d.accountId))
+    );
+    return { ...d, letter };
+  }) || [];
+
+  const disputesHtml = disputesWithLetters.length
+    ? `<div class="section-header" style="margin-top: 48px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+         <div>
+           <h2>Identified Disputes</h2>
+           <p>Anomalies categorized for resolution.</p>
+         </div>
+         <div class="filter-group">
+           <button class="filter-btn active" data-filter="ALL" onclick="filterDisputes('ALL')">All</button>
+           <button class="filter-btn" data-filter="HIGH" onclick="filterDisputes('HIGH')">High</button>
+           <button class="filter-btn" data-filter="MEDIUM" onclick="filterDisputes('MEDIUM')">Medium</button>
+           <button class="filter-btn" data-filter="LOW" onclick="filterDisputes('LOW')">Low</button>
+         </div>
+       </div>
+       <div class="disputes-list">` +
+      disputesWithLetters.map((d: any, index: number) => {
+        const sevClass = d.severity === 'HIGH' ? 'sev-high' : d.severity === 'MEDIUM' ? 'sev-medium' : 'sev-low';
+        const hasLetter = !!d.letter;
+        return `
+        <div class="dispute-card" data-severity="${d.severity}">
+          <div class="dispute-row ${hasLetter ? 'clickable' : ''}" onclick="${hasLetter ? `toggleLetter(${index})` : ''}">
+            <div class="dispute-severity">
+              <span class="severity-badge ${sevClass}">${escapeHtml(d.severity)}</span>
+            </div>
+            
+            <div class="dispute-main">
+              <div class="dispute-header">
+                <span class="dispute-lender">${escapeHtml(d.lenderName || d.accountId || 'Unknown Lender')}</span>
+              </div>
+              ${d.recommendedAction ? `<div class="dispute-action">${escapeHtml(d.recommendedAction)}</div>` : ''}
+              ${(d.description || d.anomaly) ? `<div class="dispute-desc">${escapeHtml(d.description || d.anomaly)}</div>` : ''}
+            </div>
+
+            ${hasLetter ? `<div class="expand-icon" id="icon-${index}">+</div>` : '<div class="expand-spacer"></div>'}
+          </div>
+          ${hasLetter ? `
+            <div class="letter-container" id="letter-${index}" style="display: none;">
+              <div class="letter-subject">${escapeHtml(d.letter.subject)}</div>
+              <div class="letter-body">${escapeHtml(d.letter.body)}</div>
+            </div>
+          ` : ''}
+        </div>`;
+      }).join('') + `</div>`
     : '';
 
   const errorsHtml = result?.errors?.length
-    ? `<div class="errors"><strong>Errors:</strong><ul>${result.errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul></div>`
+    ? `<div class="alert alert-error"><strong>Errors:</strong><ul>${result.errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul></div>`
     : '';
 
   return `<!DOCTYPE html>
@@ -346,86 +503,323 @@ function buildResultPage(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dispute Result — Job ${jobId}</title>
+  <title>Result: Job ${jobId}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --primary: #2563eb;
+      --radius: 8px;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; }
-    .topbar { background: #0f172a; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
-    .topbar-left h1 { font-size: 18px; font-weight: 600; }
-    .topbar-left .sub { font-size: 13px; color: #94a3b8; margin-top: 2px; }
-    .back-btn { font-size: 13px; color: #94a3b8; text-decoration: none; border: 1px solid #334155; padding: 6px 14px; border-radius: 6px; }
-    .back-btn:hover { color: white; border-color: #64748b; }
-    .status-pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; color: white; background: ${color}; margin-left: 8px; }
-    .container { max-width: 900px; margin: 32px auto; padding: 0 24px; }
-    .summary { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 28px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
-    .conflict-card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 20px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; }
-    .conflict-field { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
-    .conflict-values { font-size: 13px; color: #0f172a; margin-bottom: 6px; }
-    .conflict-values span { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-family: monospace; margin: 0 2px; }
-    .conflict-reasoning { font-size: 12px; color: #64748b; line-height: 1.5; }
-    .target-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
-    .target-experian { background: #fef3c7; color: #92400e; }
-    .target-cibil { background: #ede9fe; color: #5b21b6; }
-    .target-both { background: #fee2e2; color: #991b1b; }
-    .ground-truth { font-size: 11px; color: #16a34a; font-weight: 600; margin-top: 4px; }
-    .stat { text-align: center; }
-    .stat .value { font-size: 32px; font-weight: 700; color: #0f172a; }
-    .stat .label { font-size: 12px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
-    .section-title { font-size: 16px; font-weight: 600; color: #0f172a; margin-bottom: 16px; }
-    .letter { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
-    .letter-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
-    .badge { background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-right: 8px; }
-    .letter-date { font-size: 12px; color: #94a3b8; }
-    .letter-subject { padding: 12px 20px; font-weight: 600; font-size: 14px; color: #1e293b; border-bottom: 1px solid #f1f5f9; }
-    .letter-body { padding: 20px; font-size: 13px; line-height: 1.8; white-space: pre-wrap; font-family: 'Georgia', serif; color: #374151; }
-    .errors { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 20px; font-size: 13px; color: #dc2626; }
-    .errors ul { margin-top: 8px; padding-left: 20px; }
-    .empty { color: #94a3b8; font-size: 14px; padding: 20px 0; }
-    .waiting { text-align: center; padding: 80px 24px; color: #64748b; }
-    .waiting .spinner { width: 44px; height: 44px; border: 3px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
-    .waiting h3 { font-size: 18px; color: #0f172a; margin-bottom: 8px; }
-    .waiting .steps { margin-top: 24px; display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; }
-    .waiting .step { font-size: 12px; color: #94a3b8; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    body { 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+      background: var(--bg); 
+      color: var(--text-main); 
+      line-height: 1.5; 
+      -webkit-font-smoothing: antialiased; 
+    }
+    
+    .topbar { 
+      background: var(--surface); 
+      border-bottom: 1px solid var(--border); 
+      padding: 16px 32px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+      position: sticky; 
+      top: 0; 
+      z-index: 100; 
+      box-shadow: var(--shadow-sm);
+    }
+    .topbar-left { display: flex; flex-direction: column; gap: 4px; }
+    .topbar-left h1 { font-size: 16px; font-weight: 600; margin: 0; }
+    .sub { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 12px; }
+    
+    .status-indicator { 
+      display: inline-flex; 
+      align-items: center; 
+      font-size: 11px; 
+      font-weight: 600; 
+      padding: 2px 8px; 
+      border-radius: 4px; 
+      text-transform: uppercase; 
+    }
+    .status-indicator.is-progress { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .status-indicator.is-done { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .status-indicator.is-failed { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    
+    .back-btn { 
+      font-size: 13px; 
+      color: var(--text-main); 
+      text-decoration: none; 
+      border: 1px solid var(--border); 
+      padding: 6px 12px; 
+      border-radius: 6px; 
+      font-weight: 500; 
+      background: var(--surface);
+    }
+    .back-btn:hover { background: #f1f5f9; }
+    
+    .container { max-width: 1000px; margin: 0 auto; padding: 40px 24px; }
+    
+    /* Processing Screen */
+    .waiting-screen { text-align: center; padding: 60px 0; max-width: 480px; margin: 0 auto; }
+    .waiting-screen h2 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+    .waiting-screen p { color: var(--text-muted); margin-bottom: 40px; font-size: 14px; }
+    
+    .stepper { 
+      display: flex; 
+      flex-direction: column; 
+      text-align: left; 
+      background: var(--surface); 
+      padding: 32px; 
+      border-radius: var(--radius); 
+      border: 1px solid var(--border); 
+      box-shadow: var(--shadow-sm); 
+    }
+    
+    .step-item {
+      display: flex;
+      position: relative;
+      padding-bottom: 32px; 
+    }
+    .step-item:last-child {
+      padding-bottom: 0;
+    }
+    .step-item:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 17px; 
+      top: 36px; 
+      bottom: 0; 
+      width: 2px;
+      background: var(--border);
+      z-index: 1;
+    }
+    .step-item.completed:not(:last-child)::after {
+      background: var(--primary);
+    }
+    
+    .step-icon {
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: #f8fafc;
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      margin-right: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .step-content { padding-top: 6px; }
+    .step-text { font-size: 15px; font-weight: 600; color: var(--text-main); line-height: 1.2; margin-bottom: 4px; }
+    .step-desc { font-size: 13px; color: var(--text-muted); }
+    
+    .step-item.active .step-icon { border-color: var(--primary); color: var(--primary); background: #eff6ff; }
+    .step-item.completed .step-icon { border-color: var(--primary); background: var(--primary); color: white; }
+
+    /* Result Dashboard */
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 48px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow-sm); }
+    .stat-val { font-size: 32px; font-weight: 700; color: var(--text-main); line-height: 1; margin-bottom: 8px; }
+    .stat-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+    
+    .section-header { margin-bottom: 24px; }
+    .section-header h2 { font-size: 20px; font-weight: 600; color: var(--text-main); margin-bottom: 4px; }
+    .section-header p { font-size: 14px; color: var(--text-muted); }
+    
+    /* Bureau Conflicts */
+    .conflicts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; }
+    .conflict-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow-sm); }
+    .conflict-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .conflict-field { font-size: 14px; font-weight: 600; color: var(--text-main); }
+    .conflict-account { font-family: monospace; font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+    
+    .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; border: 1px solid transparent; }
+    .badge-neutral { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+    
+    .conflict-compare { display: flex; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 16px; overflow: hidden; }
+    .compare-side { flex: 1; padding: 12px; border-right: 1px solid var(--border); }
+    .compare-side:last-child { border-right: none; }
+    .compare-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+    .compare-val { font-size: 13px; font-weight: 500; color: var(--text-main); word-break: break-all; }
+    
+    .conflict-reasoning { font-size: 13px; color: #334155; line-height: 1.5; background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 2px solid var(--border); }
+    .ground-truth { display: block; margin-top: 6px; font-weight: 600; color: #15803d; }
+    
+    /* Disputes & Filters */
+    .filter-group { display: flex; gap: 8px; }
+    .filter-btn { padding: 6px 12px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .filter-btn:hover { background: #f1f5f9; }
+    .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+    
+    .disputes-list { display: flex; flex-direction: column; gap: 12px; }
+    .dispute-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-sm); overflow: hidden; }
+    
+    .dispute-row { 
+      padding: 20px; 
+      display: flex; 
+      align-items: flex-start; 
+      gap: 16px; 
+      transition: background 0.2s; 
+    }
+    .dispute-row.clickable { cursor: pointer; }
+    .dispute-row.clickable:hover { background: #f8fafc; }
+    
+    .dispute-severity { flex: 0 0 64px; }
+    .severity-badge { 
+      display: inline-block; 
+      text-align: center; 
+      width: 100%; 
+      font-size: 10px; 
+      font-weight: 600; 
+      padding: 3px 6px; 
+      border-radius: 4px; 
+    }
+    .sev-high { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .sev-medium { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    .sev-low { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    
+    .dispute-main { 
+      flex: 1; 
+      min-width: 0; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 4px; 
+    }
+    .dispute-header { display: flex; align-items: center; gap: 12px; }
+    .dispute-lender { font-weight: 600; font-size: 15px; color: var(--text-main); }
+    
+    .dispute-action { font-size: 14px; color: var(--text-main); line-height: 1.5; }
+    .dispute-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+    
+    .expand-icon { 
+      flex: 0 0 24px; 
+      height: 24px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      border-radius: 50%; 
+      background: #f1f5f9;
+      color: var(--text-muted); 
+      font-size: 14px; 
+      line-height: 1; 
+      transition: all 0.2s;
+    }
+    .dispute-row.clickable:hover .expand-icon { background: #e2e8f0; color: var(--text-main); }
+    .expand-icon.open { transform: rotate(45deg); background: var(--primary); color: white; }
+    .expand-spacer { flex: 0 0 24px; height: 24px; }
+
+    /* Expandable Letters */
+    .letter-container { border-top: 1px solid var(--border); background: #f8fafc; padding: 24px; }
+    .letter-subject { font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 12px; }
+    .letter-body { font-size: 13px; line-height: 1.6; color: #334155; white-space: pre-wrap; font-family: 'Times New Roman', Times, serif; background: white; padding: 20px; border: 1px solid var(--border); border-radius: 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); }
+    
+    .alert { padding: 16px; border-radius: 6px; margin-bottom: 24px; font-size: 13px; }
+    .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+    .alert-error ul { margin-top: 8px; padding-left: 20px; }
   </style>
-  ${jobStatus !== 'completed' && jobStatus !== 'failed' ? '<meta http-equiv="refresh" content="4">' : ''}
+  ${!isDone ? '<meta http-equiv="refresh" content="4">' : ''}
 </head>
 <body>
   <div class="topbar">
     <div class="topbar-left">
-      <h1>Credit Dispute Agent</h1>
-      <div class="sub">Job #${jobId} <span class="status-pill">${result?.status ?? jobStatus.toUpperCase()}</span></div>
+      <h1>Credit Dispute System</h1>
+      <div class="sub">
+        <span>Job #${jobId.substring(0,8)}</span>
+        <span class="status-indicator ${isDone ? (currentStatus === 'FAILED' ? 'is-failed' : 'is-done') : 'is-progress'}">
+          ${isDone ? (currentStatus === 'FAILED' ? 'Failed' : 'Completed') : 'Processing'}
+        </span>
+      </div>
     </div>
-    <a href="/" class="back-btn">← New Report</a>
+    <a href="/" class="back-btn">New Report</a>
   </div>
 
   <div class="container">
-    ${jobStatus !== 'completed' && jobStatus !== 'failed' ? `
-      <div class="waiting">
-        <div class="spinner"></div>
-        <h3>Agents are working…</h3>
-        <p>This page refreshes every 4 seconds</p>
-        <div class="steps">
-          <div class="step">⚡ Reconciling bureaus</div>
-          <div class="step">🔍 Analyzing anomalies</div>
-          <div class="step">⚖️ Classifying disputes</div>
-          <div class="step">✉️ Drafting letters</div>
+    ${!isDone ? `
+      <div class="waiting-screen">
+        <h2>Processing Data</h2>
+        <p>System is analyzing reports. Page refreshes automatically.</p>
+        <div class="stepper">
+          ${steps.map((step, i) => `
+            <div class="step-item ${i === activeStepIndex ? 'active' : i < activeStepIndex ? 'completed' : ''}">
+              <div class="step-icon">${step.icon}</div>
+              <div class="step-content">
+                <div class="step-text">${step.label}</div>
+                <div class="step-desc">${step.desc}</div>
+              </div>
+            </div>
+          `).join('')}
         </div>
       </div>
     ` : `
-      <div class="summary">
-        <div class="stat"><div class="value">${result?.bureauConflicts?.length ?? 0}</div><div class="label">Bureau Conflicts</div></div>
-        <div class="stat"><div class="value">${result?.anomalies?.length ?? 0}</div><div class="label">Anomalies Found</div></div>
-        <div class="stat"><div class="value">${result?.disputes?.length ?? 0}</div><div class="label">Disputes Classified</div></div>
-        <div class="stat"><div class="value">${result?.letters?.length ?? 0}</div><div class="label">Letters Drafted</div></div>
-        <div class="stat"><div class="value">${result?.errors?.length ?? 0}</div><div class="label">Errors</div></div>
+      <div class="summary-grid">
+        <div class="stat-card">
+          <div class="stat-val">${result?.bureauConflicts?.length ?? 0}</div>
+          <div class="stat-label">Conflicts</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">${result?.anomalies?.length ?? 0}</div>
+          <div class="stat-label">Anomalies</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">${result?.disputes?.length ?? 0}</div>
+          <div class="stat-label">Disputes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">${result?.letters?.length ?? 0}</div>
+          <div class="stat-label">Letters</div>
+        </div>
       </div>
+      
       ${errorsHtml}
       ${conflictsHtml}
-      <div class="section-title">Dispute Letters</div>
-      ${lettersHtml}
+      ${disputesHtml}
     `}
   </div>
+  
+  <script>
+    function filterDisputes(severity) {
+      // Update buttons
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === severity);
+      });
+      
+      // Update rows
+      document.querySelectorAll('.dispute-card').forEach(card => {
+        if (severity === 'ALL' || card.dataset.severity === severity) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+    
+    function toggleLetter(index) {
+      const letter = document.getElementById('letter-' + index);
+      const icon = document.getElementById('icon-' + index);
+      if (letter) {
+        if (letter.style.display === 'none') {
+          letter.style.display = 'block';
+          if (icon) icon.classList.add('open');
+        } else {
+          letter.style.display = 'none';
+          if (icon) icon.classList.remove('open');
+        }
+      }
+    }
+  </script>
 </body>
 </html>`;
 }

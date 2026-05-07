@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { BureauConflict, CreditReport } from '../types/graph.state';
-import { getGeminiModel } from './gemini.client';
+import { getGeminiModel, generateWithRetry } from './gemini.client';
 
 const logger = new Logger('BureauReconcilerAgent');
 
@@ -65,7 +65,7 @@ export async function runBureauReconcilerAgent(
     `${cibilReport.bureau} (score=${cibilReport.creditScore})`,
   );
 
-  const result = await model.generateContent(buildUserPrompt(experianReport, cibilReport));
+  const result = await generateWithRetry(model, buildUserPrompt(experianReport, cibilReport));
   const rawText = result.response.text().trim();
 
   logger.log(`[${new Date().toISOString()}] BureauReconcilerAgent: received response, parsing conflicts`);
