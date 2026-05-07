@@ -25,10 +25,13 @@ export class DisputeProducer implements OnModuleInit, OnModuleDestroy {
     return this.queue;
   }
 
-  async enqueueDisputeJob(creditReport: CreditReport): Promise<string> {
+  async enqueueDisputeJob(
+    creditReport: CreditReport,
+    secondaryReport?: CreditReport,
+  ): Promise<string> {
     const job = await this.queue.add(
       DISPUTE_JOB_NAME,
-      { creditReport },
+      { creditReport, ...(secondaryReport ? { secondaryReport } : {}) },
       {
         attempts: 3,
         backoff: {
@@ -41,7 +44,8 @@ export class DisputeProducer implements OnModuleInit, OnModuleDestroy {
     );
 
     this.logger.log(
-      `DisputeProducer: enqueued job ${job.id} for reportId=${creditReport.reportId}`,
+      `DisputeProducer: enqueued job ${job.id} for reportId=${creditReport.reportId}` +
+      (secondaryReport ? ` + ${secondaryReport.bureau} secondary report` : ''),
     );
 
     return job.id as string;

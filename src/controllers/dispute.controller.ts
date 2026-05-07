@@ -13,9 +13,10 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { DisputeProducer } from '../queue/dispute.producer';
-import { CreditReport, DisputeGraphState, DisputeLetter } from '../types/graph.state';
+import { BureauConflict, CreditReport, DisputeGraphState, DisputeLetter } from '../types/graph.state';
 import { SubmitDisputeResponse, JobResultResponse } from '../dto/submit-dispute.dto';
 import mockCreditReport from '../../mock/credit-report.json';
+import mockCibilReport from '../../mock/credit-report-cibil.json';
 
 @Controller()
 export class DisputeController {
@@ -54,6 +55,35 @@ export class DisputeController {
     return { jobId, status: 'QUEUED', message: 'Processing started' };
   }
 
+  @Post('dispute/submit-multi-bureau')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async submitMultiBureau(
+    @Body() body: { primary?: CreditReport; secondary?: CreditReport },
+  ): Promise<SubmitDisputeResponse> {
+    const primary = (body?.primary ?? mockCreditReport) as CreditReport;
+    const secondary = (body?.secondary ?? mockCibilReport) as CreditReport;
+
+    if (!primary.reportId || !primary.accounts || !primary.borrower) {
+      throw new BadRequestException('Invalid primary credit report: missing required fields');
+    }
+    if (!secondary.reportId || !secondary.accounts || !secondary.borrower) {
+      throw new BadRequestException('Invalid secondary credit report: missing required fields');
+    }
+    if (primary.borrower.pan !== secondary.borrower.pan) {
+      throw new BadRequestException(
+        `PAN mismatch: primary=${primary.borrower.pan}, secondary=${secondary.borrower.pan}. Both reports must belong to the same borrower.`,
+      );
+    }
+
+    const jobId = await this.disputeProducer.enqueueDisputeJob(primary, secondary);
+    this.logger.log(
+      `DisputeController: multi-bureau job ${jobId} queued — ` +
+      `${primary.bureau} (${primary.reportId}) + ${secondary.bureau} (${secondary.reportId})`,
+    );
+
+    return { jobId, status: 'QUEUED', message: 'Multi-bureau processing started' };
+  }
+
   @Get('dispute/:jobId/result')
   async getResult(@Param('jobId') jobId: string): Promise<JobResultResponse> {
     const queue = this.disputeProducer.getQueue();
@@ -70,6 +100,7 @@ export class DisputeController {
       result: returnValue
         ? {
             status: returnValue.status,
+            bureauConflicts: returnValue.bureauConflicts ?? [],
             anomalies: returnValue.anomalies ?? [],
             disputes: returnValue.disputes ?? [],
             letters: returnValue.letters ?? [],
@@ -146,10 +177,12 @@ function buildLandingPage(mockReportJson: string): string {
 
   <div class="hero">
     <h2>AI-powered <span>credit dispute</span><br>letters in seconds</h2>
-    <p>Upload a credit report. Three AI agents analyze anomalies, classify disputes, and draft formal letters — automatically.</p>
+    <p>Upload a credit report. Four AI agents reconcile bureau conflicts, analyze anomalies, classify disputes, and draft formal letters — automatically.</p>
 
     <div class="pipeline">
-      <div class="step"><div class="icon">📄</div><div class="name">Credit Report</div><div class="desc">JSON input</div></div>
+      <div class="step"><div class="icon">🏦</div><div class="name">Experian + CIBIL</div><div class="desc">Two bureau inputs</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="icon">⚡</div><div class="name">Reconciler</div><div class="desc">Diffs bureaus</div></div>
       <div class="arrow">→</div>
       <div class="step"><div class="icon">🔍</div><div class="name">Analyzer</div><div class="desc">Flags anomalies</div></div>
       <div class="arrow">→</div>
@@ -159,19 +192,28 @@ function buildLandingPage(mockReportJson: string): string {
     </div>
   </div>
 
-  <div class="cards">
+  <div class="cards" style="grid-template-columns: 1fr 1fr 1fr;">
     <div class="card">
-      <h3>Run with sample report</h3>
-      <p>Use our pre-loaded mock credit report with realistic anomalies — late payments, high utilization, unknown inquiries, and more.</p>
+      <h3>Single bureau (Experian)</h3>
+      <p>Use our pre-loaded Experian mock — late payments, high utilization, unknown inquiries.</p>
       <button class="btn btn-primary" onclick="runMock()">
-        <span id="mock-label">Run Demo →</span>
+        <span id="mock-label">Run Single Bureau →</span>
         <div class="spinner-inline" id="mock-spinner"></div>
       </button>
     </div>
 
     <div class="card">
+      <h3>Multi-bureau (Experian + CIBIL)</h3>
+      <p>Runs both mock reports through the Reconciler agent — detects cross-bureau conflicts before dispute classification.</p>
+      <button class="btn btn-primary" style="background:#7c3aed" onclick="runMultiBureau()">
+        <span id="multi-label">Run Multi-Bureau →</span>
+        <div class="spinner-inline" id="multi-spinner"></div>
+      </button>
+    </div>
+
+    <div class="card">
       <h3>Paste your own report</h3>
-      <p>Paste a credit report JSON in the schema below. Must include <code>reportId</code>, <code>borrower</code>, and <code>accounts</code>.</p>
+      <p>Paste a credit report JSON. Must include <code>reportId</code>, <code>borrower</code>, and <code>accounts</code>.</p>
       <textarea id="custom-json" placeholder="Paste credit report JSON here…">${escapeForHtml(mockReportJson)}</textarea>
       <div class="error-msg" id="custom-error">Invalid JSON — please check your input.</div>
       <button class="btn btn-outline" onclick="runCustom()">
@@ -190,6 +232,17 @@ function buildLandingPage(mockReportJson: string): string {
         window.location.href = '/dispute/' + data.jobId + '/result/view';
       } catch {
         setLoading('mock', false);
+      }
+    }
+
+    async function runMultiBureau() {
+      setLoading('multi', true);
+      try {
+        const res = await fetch('/dispute/submit-multi-bureau', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const data = await res.json();
+        window.location.href = '/dispute/' + data.jobId + '/result/view';
+      } catch {
+        setLoading('multi', false);
       }
     }
 
@@ -259,6 +312,31 @@ function buildResultPage(
         .join('')
     : '<p class="empty">No letters generated.</p>';
 
+  const conflictsHtml = result?.bureauConflicts?.length
+    ? `<div class="section-title" style="margin-top:8px">Bureau Conflicts Detected</div>` +
+      result.bureauConflicts
+        .map((c: BureauConflict) => {
+          const targetClass =
+            c.disputeTarget === 'EXPERIAN' ? 'target-experian'
+            : c.disputeTarget === 'CIBIL' ? 'target-cibil'
+            : 'target-both';
+          return `
+          <div class="conflict-card">
+            <div>
+              <div class="conflict-field">${escapeHtml(c.conflictField)} — <span style="color:#0f172a">${escapeHtml(c.accountId)}</span></div>
+              <div class="conflict-values">
+                Experian: <span>${escapeHtml(c.experianValue)}</span>
+                vs CIBIL: <span>${escapeHtml(c.cibilValue)}</span>
+              </div>
+              <div class="conflict-reasoning">${escapeHtml(c.reasoning)}</div>
+              <div class="ground-truth">Ground truth: ${c.groundTruth}</div>
+            </div>
+            <span class="target-badge ${targetClass}">Dispute ${c.disputeTarget}</span>
+          </div>`;
+        })
+        .join('')
+    : '';
+
   const errorsHtml = result?.errors?.length
     ? `<div class="errors"><strong>Errors:</strong><ul>${result.errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul></div>`
     : '';
@@ -279,7 +357,17 @@ function buildResultPage(
     .back-btn:hover { color: white; border-color: #64748b; }
     .status-pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; color: white; background: ${color}; margin-left: 8px; }
     .container { max-width: 900px; margin: 32px auto; padding: 0 24px; }
-    .summary { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 28px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .summary { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 28px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+    .conflict-card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 20px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; }
+    .conflict-field { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .conflict-values { font-size: 13px; color: #0f172a; margin-bottom: 6px; }
+    .conflict-values span { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-family: monospace; margin: 0 2px; }
+    .conflict-reasoning { font-size: 12px; color: #64748b; line-height: 1.5; }
+    .target-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+    .target-experian { background: #fef3c7; color: #92400e; }
+    .target-cibil { background: #ede9fe; color: #5b21b6; }
+    .target-both { background: #fee2e2; color: #991b1b; }
+    .ground-truth { font-size: 11px; color: #16a34a; font-weight: 600; margin-top: 4px; }
     .stat { text-align: center; }
     .stat .value { font-size: 32px; font-weight: 700; color: #0f172a; }
     .stat .label { font-size: 12px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -318,6 +406,7 @@ function buildResultPage(
         <h3>Agents are working…</h3>
         <p>This page refreshes every 4 seconds</p>
         <div class="steps">
+          <div class="step">⚡ Reconciling bureaus</div>
           <div class="step">🔍 Analyzing anomalies</div>
           <div class="step">⚖️ Classifying disputes</div>
           <div class="step">✉️ Drafting letters</div>
@@ -325,12 +414,14 @@ function buildResultPage(
       </div>
     ` : `
       <div class="summary">
+        <div class="stat"><div class="value">${result?.bureauConflicts?.length ?? 0}</div><div class="label">Bureau Conflicts</div></div>
         <div class="stat"><div class="value">${result?.anomalies?.length ?? 0}</div><div class="label">Anomalies Found</div></div>
         <div class="stat"><div class="value">${result?.disputes?.length ?? 0}</div><div class="label">Disputes Classified</div></div>
         <div class="stat"><div class="value">${result?.letters?.length ?? 0}</div><div class="label">Letters Drafted</div></div>
         <div class="stat"><div class="value">${result?.errors?.length ?? 0}</div><div class="label">Errors</div></div>
       </div>
       ${errorsHtml}
+      ${conflictsHtml}
       <div class="section-title">Dispute Letters</div>
       ${lettersHtml}
     `}

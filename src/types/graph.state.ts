@@ -3,16 +3,38 @@ export type IssueType =
   | 'INCORRECT_STATUS'
   | 'DUPLICATE_ACCOUNT'
   | 'HIGH_UTILIZATION'
-  | 'UNKNOWN_INQUIRY';
+  | 'UNKNOWN_INQUIRY'
+  | 'BUREAU_CONFLICT';
 
 export type DisputeSeverity = 'HIGH' | 'MEDIUM' | 'LOW';
 
 export type GraphStatus =
+  | 'RECONCILING'
   | 'ANALYZING'
   | 'IDENTIFYING'
   | 'DRAFTING'
   | 'COMPLETE'
   | 'FAILED';
+
+export type ConflictField =
+  | 'accountStatus'
+  | 'balance'
+  | 'creditLimit'
+  | 'paymentHistory'
+  | 'accountMissing'
+  | 'inquiryMissing';
+
+export type GroundTruthVerdict = 'EXPERIAN' | 'CIBIL' | 'UNRESOLVABLE';
+
+export interface BureauConflict {
+  accountId: string;
+  conflictField: ConflictField;
+  experianValue: string;
+  cibilValue: string;
+  groundTruth: GroundTruthVerdict;
+  reasoning: string;
+  disputeTarget: 'EXPERIAN' | 'CIBIL' | 'BOTH';
+}
 
 export interface Account {
   accountId: string;
@@ -79,6 +101,8 @@ export interface DisputeLetter {
 
 export interface DisputeGraphState {
   creditReport: CreditReport;
+  secondaryReport: CreditReport | null;
+  bureauConflicts: BureauConflict[];
   anomalies: Anomaly[];
   disputes: Dispute[];
   letters: DisputeLetter[];

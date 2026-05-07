@@ -9,6 +9,7 @@ export interface JobResultResponse {
   jobStatus: 'active' | 'completed' | 'failed' | 'waiting' | 'unknown';
   result: {
     status: string;
+    bureauConflicts: unknown[];
     anomalies: unknown[];
     disputes: unknown[];
     letters: unknown[];

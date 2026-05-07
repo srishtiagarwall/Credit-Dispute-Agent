@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
 import { Dispute, DisputeLetter, Borrower } from '../types/graph.state';
+import { getGeminiModel } from './gemini.client';
 
 const logger = new Logger('LetterDrafterAgent');
 
@@ -43,11 +43,6 @@ export async function runLetterDrafterAgent(
   disputes: Dispute[],
   borrower: Borrower,
 ): Promise<DisputeLetter[]> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not set');
-  }
-
   const actionableDisputes = disputes.filter(
     (d) => d.severity === 'HIGH' || d.severity === 'MEDIUM',
   );
@@ -57,11 +52,7 @@ export async function runLetterDrafterAgent(
     return [];
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-pro',
-    systemInstruction: SYSTEM_PROMPT,
-  });
+  const model = getGeminiModel(SYSTEM_PROMPT);
 
   logger.log(`[${new Date().toISOString()}] LetterDrafterAgent: drafting letters for ${actionableDisputes.length} disputes`);
 

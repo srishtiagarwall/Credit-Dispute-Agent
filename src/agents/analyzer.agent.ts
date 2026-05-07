@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Anomaly, CreditReport } from '../types/graph.state';
+import { getGeminiModel } from './gemini.client';
 
 const logger = new Logger('AnalyzerAgent');
 
@@ -30,16 +30,7 @@ ${JSON.stringify(report, null, 2)}`;
 export async function runAnalyzerAgent(
   report: CreditReport,
 ): Promise<Anomaly[]> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not set');
-  }
-
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-pro',
-    systemInstruction: SYSTEM_PROMPT,
-  });
+  const model = getGeminiModel(SYSTEM_PROMPT);
 
   logger.log(`[${new Date().toISOString()}] AnalyzerAgent: sending request to Gemini`);
 

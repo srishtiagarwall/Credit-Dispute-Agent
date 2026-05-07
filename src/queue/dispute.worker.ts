@@ -10,6 +10,7 @@ import {
 
 interface DisputeJobData {
   creditReport: CreditReport;
+  secondaryReport?: CreditReport;
 }
 
 @Injectable()
@@ -59,20 +60,23 @@ export class DisputeWorker implements OnModuleInit, OnModuleDestroy {
   }
 
   private async processJob(job: Job<DisputeJobData>): Promise<DisputeGraphState> {
-    const { creditReport } = job.data;
+    const { creditReport, secondaryReport } = job.data;
 
     this.logger.log(
       `[${new Date().toISOString()}] DisputeWorker: processing job ${job.id} ` +
-      `for reportId=${creditReport.reportId}`,
+      `for reportId=${creditReport.reportId}` +
+      (secondaryReport ? ` + secondary ${secondaryReport.bureau} report` : ''),
     );
 
     const initialState: DisputeGraphState = {
       creditReport,
+      secondaryReport: secondaryReport ?? null,
+      bureauConflicts: [],
       anomalies: [],
       disputes: [],
       letters: [],
       errors: [],
-      status: 'ANALYZING',
+      status: secondaryReport ? 'RECONCILING' : 'ANALYZING',
     };
 
     try {

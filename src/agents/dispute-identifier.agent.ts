@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Anomaly, CreditReport, Dispute } from '../types/graph.state';
+import { getGeminiModel } from './gemini.client';
 
 const logger = new Logger('DisputeIdentifierAgent');
 
@@ -35,16 +35,7 @@ export async function runDisputeIdentifierAgent(
   anomalies: Anomaly[],
   report: CreditReport,
 ): Promise<Dispute[]> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not set');
-  }
-
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-pro',
-    systemInstruction: SYSTEM_PROMPT,
-  });
+  const model = getGeminiModel(SYSTEM_PROMPT);
 
   logger.log(`[${new Date().toISOString()}] DisputeIdentifierAgent: classifying ${anomalies.length} anomalies`);
 
